@@ -20,7 +20,7 @@ constexpr size_t SAMPLE_SIZE_MINS = 60*6; // 6 hours
 // sine wave parameters for our fictitious market history
 constexpr double TRAINDATA_MIN_VAL = 1.0;
 constexpr double TRAINDATA_MAX_VAL = 2.0;
-constexpr double TRAINDATA_FREQUENCY = 1.0 / 200.0;
+constexpr double TRAINDATA_FREQUENCY = 1.0 / 100.0;
 // how many minutes of history do we have ?
 constexpr size_t TRAINDATA_SAMPLES_MINS_N = 60*24*30*6; // 6 months
 // convert the minutes to samples
@@ -29,7 +29,7 @@ constexpr size_t TRAINDATA_SAMPLES_N = TRAINDATA_SAMPLES_MINS_N / SAMPLE_SIZE_MI
 // sine wave parameters for our fictitious market history
 constexpr double TESTDATA_MIN_VAL = 1.0;
 constexpr double TESTDATA_MAX_VAL = 2.0;
-constexpr double TESTDATA_FREQUENCY = 1.0 / 100.0;
+constexpr double TESTDATA_FREQUENCY = 1.0 / 50.0;
 // how many minutes of history do we have ?
 constexpr size_t TESTDATA_SAMPLES_MINS_N = 60*24*30*1; // 1 month
 // convert the minutes to samples
@@ -45,8 +45,8 @@ constexpr size_t LSTM_HIDDEN_SIZE = LSTM_SEQUENCE_LENGTH * 2;
 constexpr double LEARNING_RATE = 0.0001;
 constexpr size_t EPOCHS_N = 500;
 
-constexpr size_t CHART_W = 76;
-constexpr size_t CHART_H = 15;
+constexpr size_t CHART_W = 74;
+constexpr size_t CHART_H = 12;
 
 //==================================================================
 auto generateSineWave(size_t samplesN, double frequency, double minVal, double maxVal)
@@ -125,6 +125,40 @@ public:
 };
 
 //==================================================================
+void printLossReport(auto epoch, const auto& trainLossHist, const auto& testLossHist)
+{
+    std::string str;
+    str = "## Train Loss\n";
+    DrawChart(str, trainLossHist, CHART_W, CHART_H);
+    str += "\n";
+    str += "## Test Loss\n";
+    DrawChart(str, testLossHist, CHART_W, CHART_H);
+
+    std::cout << str << std::endl;
+
+    std::cout << "Epoch [" << (epoch+1) << "/"
+        << EPOCHS_N << "], "
+        << "Train Loss: " << trainLossHist.back()
+        << ", "
+        << "Test Loss: " << testLossHist.back() << std::endl;
+}
+
+//==================================================================
+void plotTargetsAndPredictions(const auto& testTargets, const auto& testPredsVec)
+{
+    const auto testTargetsCPU = testTargets.cpu();
+
+    std::string str;
+    str = "## Test Targets\n";
+    DrawChart(str, testTargetsCPU, CHART_W, CHART_H);
+    str += "\n";
+    str += "## Test Predictions\n";
+    DrawChart(str, testPredsVec, CHART_W, CHART_H);
+
+    std::cout << str << std::endl;
+}
+
+//==================================================================
 int main()
 {
     torch::manual_seed(0);
@@ -141,15 +175,15 @@ int main()
 
     const auto trainPriceChangesT = makeLogReturns(trainPrices);
 
-    auto [trainSequencesT, trainTargetsT] = createSequences(trainPriceChangesT, LSTM_SEQUENCE_LENGTH);
-    trainTargetsT = trainTargetsT.unsqueeze(1); // add a dimension
+    auto [trainSeqs, trainTargets] = createSequences(trainPriceChangesT, LSTM_SEQUENCE_LENGTH);
+    //trainTargets = trainTargets.unsqueeze(1); // add a dimension
 
     std::cout << __func__ << std::endl;
     std::cout << "  LSTM_INPUT_SIZE: " << LSTM_INPUT_SIZE << std::endl;
     std::cout << "  LSTM_HIDDEN_SIZE: " << LSTM_HIDDEN_SIZE << std::endl;
     std::cout << "  LSTM_SEQUENCE_LENGTH: " << LSTM_SEQUENCE_LENGTH << std::endl;
-    std::cout << "  trainSequencesT.sizes(): " << trainSequencesT.sizes() << std::endl;
-    std::cout << "  trainTargetsT.sizes(): " << trainTargetsT.sizes() << std::endl;
+    std::cout << "  trainSeqs.sizes(): " << trainSeqs.sizes() << std::endl;
+    std::cout << "  trainTargets.sizes(): " << trainTargets.sizes() << std::endl;
     std::cout << std::endl;
 
     // print the data generated so far
@@ -174,7 +208,8 @@ int main()
 
     const auto testPriceChangesT = makeLogReturns(testPrices);
 
-    auto [testSequencesT, testTargetsT] = createSequences(testPriceChangesT, LSTM_SEQUENCE_LENGTH);
+    auto [testSeqs, testTargets] = createSequences(testPriceChangesT, LSTM_SEQUENCE_LENGTH);
+    auto testTargetsT = testTargets.unsqueeze(1); // add a dimension
 
     // Initialize the model
     Network net(LSTM_INPUT_SIZE, LSTM_HIDDEN_SIZE);
@@ -189,12 +224,12 @@ int main()
     // Training loop
     for (int epoch = 0; epoch < EPOCHS_N; ++epoch)
     {
-        torch::Tensor predictions = net.forward(trainSequencesT).squeeze(-1);
-        torch::Tensor loss = criterion(predictions, trainTargetsT.view({-1, 1}));
+        const auto trainPreds = net.forward(trainSeqs).squeeze(-1);
+        const auto trainLoss = criterion(trainPreds, trainTargets.view({-1, 1}));
 
         // Backward pass and optimization
         optimizer.zero_grad();
-        loss.backward();
+        trainLoss.backward();
         optimizer.step();
 
         if ((epoch+1) % 10 == 0)
@@ -204,28 +239,35 @@ int main()
 
             // Evaluation
             torch::NoGradGuard no_grad;
-            torch::Tensor testPredictions = net.forward(testSequencesT).squeeze(-1);
-            torch::Tensor testLoss = criterion(testPredictions, testTargetsT.view({-1, 1}));
+            const auto testPreds = net.forward(testSeqs).squeeze(-1);
+            const auto testLoss = criterion(testPreds, testTargets.view({-1, 1}));
 
-            trainLossHist.push_back(loss.item<float>());
+            trainLossHist.push_back(trainLoss.item<float>());
             testLossHist.push_back(testLoss.item<float>());
+
+            //
+            std::vector<float> testPredsVec;
+
+            // Iterate over the test sequences one by one
+            for (int64_t i=0; i < testSeqs.size(0); ++i)
+            {
+                // Get the current sequence, add an extra dimension for the batch size
+                auto sequence = testSeqs[i].unsqueeze(0);
+
+                // Make a prediction
+                auto pred = net.forward(sequence).item<float>();
+
+                // Store the prediction
+                testPredsVec.push_back(pred);
+            }
+
 
             // clear the screen and print the report update
             std::cout << "\033[2J\033[1;1H";
 
-            report = "## Train Loss\n";
-            DrawChart(report, trainLossHist, CHART_W, CHART_H);
-            report += "\n";
-            report += "## Test Loss\n";
-            DrawChart(report, testLossHist, CHART_W, CHART_H);
+            plotTargetsAndPredictions(testTargets, testPredsVec);
 
-            std::cout << report << std::endl;
-
-            std::cout << "Epoch [" << (epoch+1) << "/"
-                << EPOCHS_N << "], "
-                << "Train Loss: " << trainLossHist.back()
-                << ", "
-                << "Test Loss: " << testLossHist.back() << std::endl;
+            printLossReport(epoch, trainLossHist, testLossHist);
 
             // Switch back to training mode
             net.train();
