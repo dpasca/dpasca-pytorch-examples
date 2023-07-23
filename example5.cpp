@@ -45,6 +45,9 @@ constexpr size_t LSTM_HIDDEN_SIZE = LSTM_SEQUENCE_LENGTH * 2;
 constexpr double LEARNING_RATE = 0.0001;
 constexpr size_t EPOCHS_N = 500;
 
+constexpr size_t CHART_W = 76;
+constexpr size_t CHART_H = 15;
+
 //==================================================================
 auto generateSineWave(size_t samplesN, double frequency, double minVal, double maxVal)
 {
@@ -57,7 +60,7 @@ auto generateSineWave(size_t samplesN, double frequency, double minVal, double m
     return sineWave;
 }
 
-auto computeRelativeChange(const std::vector<float>& vals)
+auto makeLogReturns(const std::vector<float>& vals)
 {
     std::vector<float> logReturns(vals.size());
 
@@ -65,7 +68,7 @@ auto computeRelativeChange(const std::vector<float>& vals)
     for(size_t i=1; i < vals.size(); ++i)
         logReturns[i] = (float)(std::log((double)vals[i]) - std::log((double)vals[i - 1]));
 
-    return logReturns;
+    return torch::tensor(logReturns);
 }
 
 //==================================================================
@@ -136,8 +139,7 @@ int main()
             TRAINDATA_MIN_VAL,
             TRAINDATA_MAX_VAL);
 
-    const auto trainPriceChanges = computeRelativeChange(trainPrices);
-    const auto trainPriceChangesT = torch::tensor(trainPriceChanges); // convert to tensor
+    const auto trainPriceChangesT = makeLogReturns(trainPrices);
 
     auto [trainSequencesT, trainTargetsT] = createSequences(trainPriceChangesT, LSTM_SEQUENCE_LENGTH);
     trainTargetsT = trainTargetsT.unsqueeze(1); // add a dimension
@@ -154,11 +156,11 @@ int main()
     std::string report;
 
     report += "## Train Prices\n";
-    DrawChart(report, trainPrices, 80, 15);
+    DrawChart(report, trainPrices, CHART_W, CHART_H);
     report += "\n";
 
     report += "## Train Price Changes\n";
-    DrawChart(report, trainPriceChanges, 80, 15);
+    DrawChart(report, trainPriceChangesT, CHART_W, CHART_H);
     report += "\n";
 
     std::cout << report << std::endl;
@@ -170,8 +172,7 @@ int main()
             TESTDATA_MIN_VAL,
             TESTDATA_MAX_VAL);
 
-    const auto testPriceChanges = computeRelativeChange(testPrices);
-    const auto testPriceChangesT = torch::tensor(testPriceChanges); // convert to tensor
+    const auto testPriceChangesT = makeLogReturns(testPrices);
 
     auto [testSequencesT, testTargetsT] = createSequences(testPriceChangesT, LSTM_SEQUENCE_LENGTH);
 
@@ -181,6 +182,9 @@ int main()
     // Specify loss function and optimizer
     torch::optim::Adam optimizer(net.parameters(), torch::optim::AdamOptions(LEARNING_RATE));
     torch::nn::MSELoss criterion{};
+
+    std::vector<float> trainLossHist;
+    std::vector<float> testLossHist;
 
     // Training loop
     for (int epoch = 0; epoch < EPOCHS_N; ++epoch)
@@ -202,9 +206,26 @@ int main()
             torch::NoGradGuard no_grad;
             torch::Tensor testPredictions = net.forward(testSequencesT).squeeze(-1);
             torch::Tensor testLoss = criterion(testPredictions, testTargetsT.view({-1, 1}));
+
+            trainLossHist.push_back(loss.item<float>());
+            testLossHist.push_back(testLoss.item<float>());
+
+            // clear the screen and print the report update
+            std::cout << "\033[2J\033[1;1H";
+
+            report = "## Train Loss\n";
+            DrawChart(report, trainLossHist, CHART_W, CHART_H);
+            report += "\n";
+            report += "## Test Loss\n";
+            DrawChart(report, testLossHist, CHART_W, CHART_H);
+
+            std::cout << report << std::endl;
+
             std::cout << "Epoch [" << (epoch+1) << "/"
-                << EPOCHS_N << "], Train Loss: "
-                << loss.item<float>() << ", Test Loss: " << testLoss.item<float>() << std::endl;
+                << EPOCHS_N << "], "
+                << "Train Loss: " << trainLossHist.back()
+                << ", "
+                << "Test Loss: " << testLossHist.back() << std::endl;
 
             // Switch back to training mode
             net.train();

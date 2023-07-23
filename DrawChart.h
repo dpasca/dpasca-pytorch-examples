@@ -17,20 +17,18 @@
 //==================================================================
 inline void DrawChart(
     std::string& outStr,
-    const auto& vals,
+    const auto* pVals,
+    size_t valsN,
     size_t dispW,
     size_t dispH,
     double baseY=std::numeric_limits<double>::max())
 {
-    if (vals.empty())
-        return;
-
-    auto mi = *std::min_element(vals.begin(), vals.end());
-    auto ma = *std::max_element(vals.begin(), vals.end());
+    const auto [minIt, maxIt] = std::minmax_element(pVals, pVals + valsN);
+    auto mi = *minIt;
+    auto ma = *maxIt;
     mi -= (ma - mi) * 0.1; // add 10% padding
     ma += (ma - mi) * 0.1;
 
-    constexpr size_t PRINT_H = 20;
     std::vector<std::vector<char>> buf(dispH, std::vector<char>(dispW, ' '));
 
     auto valToScreenY = [&](double v) -> size_t
@@ -43,14 +41,14 @@ inline void DrawChart(
     };
     auto screenXToValIdx = [&](size_t x) -> size_t
     {
-        return std::clamp<size_t>((double)x * (vals.size() - 1) / (dispW - 1), 0, vals.size()-1);
+        return std::clamp<size_t>((double)x * (valsN - 1) / (dispW - 1), 0, valsN-1);
     };
 
     std::vector<std::string> leftRules(dispH);
     for (size_t i=0; i < dispH; ++i)
     {
         char buff[128] {};
-        snprintf(buff, sizeof(buff), "% 6.4f |", screenYToVal(i));
+        snprintf(buff, sizeof(buff), "% 10.7f |", screenYToVal(i));
         leftRules[i] = buff;
     }
 
@@ -66,7 +64,7 @@ inline void DrawChart(
 
     for (size_t i=0; i < dispW; ++i) // plot
     {
-        const auto y = valToScreenY(vals[ screenXToValIdx(i) ]);
+        const auto y = valToScreenY(pVals[ screenXToValIdx(i) ]);
         buf[y][i] = '*';
     }
 
@@ -77,6 +75,26 @@ inline void DrawChart(
             outStr += buf[i][j];
         outStr += '\n';
     }
+}
+
+inline void DrawChart(
+    std::string& outStr,
+    const std::vector<float>& vals,
+    size_t dispW,
+    size_t dispH,
+    double baseY=std::numeric_limits<double>::max())
+{
+    DrawChart(outStr, vals.data(), vals.size(), dispW, dispH, baseY);
+}
+
+inline void DrawChart(
+    std::string& outStr,
+    const torch::Tensor& vals,
+    size_t dispW,
+    size_t dispH,
+    double baseY=std::numeric_limits<double>::max())
+{
+    DrawChart(outStr, vals.data_ptr<float>(), vals.numel(), dispW, dispH, baseY);
 }
 
 #endif
