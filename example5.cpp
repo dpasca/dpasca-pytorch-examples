@@ -20,8 +20,8 @@ constexpr size_t SAMPLE_SIZE_MINS = 60*6; // 6 hours
 constexpr bool USE_LOG_RETURNS = false;
 
 // sine wave parameters for our fictitious market history
-constexpr double TRAINDATA_MIN_VAL = 0.0;
-constexpr double TRAINDATA_MAX_VAL = 1.0;
+constexpr double TRAINDATA_MIN_VAL = 1.0;
+constexpr double TRAINDATA_MAX_VAL = 2.0;
 constexpr double TRAINDATA_FREQUENCY = 1.0 / 100.0;
 // how many minutes of history do we have ?
 constexpr size_t TRAINDATA_SAMPLES_MINS_N = 60*24*30*6; // 6 months
@@ -29,8 +29,8 @@ constexpr size_t TRAINDATA_SAMPLES_MINS_N = 60*24*30*6; // 6 months
 constexpr size_t TRAINDATA_SAMPLES_N = TRAINDATA_SAMPLES_MINS_N / SAMPLE_SIZE_MINS;
 
 // sine wave parameters for our fictitious market history
-constexpr double TESTDATA_MIN_VAL = 0.0;
-constexpr double TESTDATA_MAX_VAL = 1.0;
+constexpr double TESTDATA_MIN_VAL = 1.0;
+constexpr double TESTDATA_MAX_VAL = 2.0;
 constexpr double TESTDATA_FREQUENCY = 1.0 / 100.0;
 // how many minutes of history do we have ?
 constexpr size_t TESTDATA_SAMPLES_MINS_N = 60*24*30*3; // 1 month
@@ -45,7 +45,10 @@ constexpr size_t LSTM_LAYERS_N = 2;
 // https://www.quora.com/How-should-I-set-the-size-of-hidden-state-vector-in-LSTM-in-keras/answer/Yugandhar-Nanda
 constexpr size_t LSTM_HIDDEN_SIZE = LSTM_SEQUENCE_LENGTH * 2;
 
-constexpr double LEARNING_RATE = 0.0001;
+constexpr double LEARNING_RATE_ADAM = 0.001;
+constexpr double LEARNING_RATE_ADAGRAD = 0.01;
+constexpr double LEARNING_RATE_RMS_PROP = 0.0001;
+constexpr double LEARNING_RATE_SGD = 0.01;
 constexpr size_t EPOCHS_N = 10000;
 
 constexpr size_t CHART_W = 74;
@@ -280,9 +283,14 @@ int main()
     Network net(LSTM_INPUT_SIZE, LSTM_HIDDEN_SIZE, LSTM_LAYERS_N);
 
     // Specify loss function and optimizer
-    torch::optim::Adam optimizer(net.parameters(), torch::optim::AdamOptions(LEARNING_RATE));
-    //torch::nn::MSELoss lossFunc(torch::nn::MSELossOptions().reduction(torch::kMean));
-    torch::nn::L1Loss lossFunc(torch::nn::L1LossOptions().reduction(torch::kMean));
+    torch::optim::Adam    optimizer(net.parameters(), torch::optim::AdamOptions(LEARNING_RATE_ADAM));
+    //torch::optim::Adagrad optimizer(net.parameters(), torch::optim::AdagradOptions(LEARNING_RATE_ADAGRAD));
+    //torch::optim::SGD     optimizer(net.parameters(), torch::optim::SGDOptions(LEARNING_RATE_SGD));
+    //torch::optim::RMSprop optimizer(net.parameters(), torch::optim::RMSpropOptions(LEARNING_RATE_RMS_PROP));
+
+
+    torch::nn::MSELoss lossFunc(torch::nn::MSELossOptions().reduction(torch::kMean));
+    //torch::nn::L1Loss lossFunc(torch::nn::L1LossOptions().reduction(torch::kMean));
 
     std::vector<float> trainLossHist;
     std::vector<float> testLossHist;
