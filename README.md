@@ -2,76 +2,84 @@
 
 ## Overview
 
-This is just a random testbed/scratchpad for simple experiments with LibTorch, the C++ library on which PyTorch is built.
+This is just a random testbed/scratchpad for simple experiments with LibTorch and PyTorch.
 
-It's regularly only tested on macOS, but should work on Linux and probably Windows.
+## Setup (C++)
+
+It's regularly only tested on macOS, but it should work on Linux and probably Windows.
 
 Get LibTorch [here](https://pytorch.org/get-started/locally/). Select `LibTorch` or `Source` if you want to build from source.
 
 The CMake build is currently looking for `../libtorch` or `../pytorch-install` (relative to the root of this repo). Change as necessary.
 
-## Build
+## Build and Run (C++)
 
 ```bash
+cd cpp
+
 ./build.sh
-```
 
-## Run
-
-```bash
 ./build/example*
 ```
 
 ## "screenshots"
 
 ```
-(base) ~/dev/repos/pytorch-mysamples ❯❯❯ ./_build/example5
-main
-  LSTM_INPUT_SIZE: 1
-  LSTM_HIDDEN_SIZE: 72
-  LSTM_SEQUENCE_LENGTH: 36
-  trainSequencesT.sizes(): [683, 36, 1]
-  trainSequencesT.size(0): 683
+ 1.1100000 |
+ 1.0000000 |                  *****                  *****                  ****
+ 0.8900000 |*                *     *                *     *               **    *
+ 0.7800000 | *              *       *              *       *             *       *
+ 0.6700000 |  *            *         *            *         *                     *
+ 0.5600000 |   *                      *          *                      *          *
+ 0.4500000 |    *         *                     *            *         *            *
+ 0.3400000 |     *       *             *       *              *       *              *
+ 0.2300000 |      *     *               *                      *     *
+ 0.1200000 |       *  **                 **  **                 ** **
+ 0.0100000 |        **                     **                     *
+-0.1000000 |--------------------------------------------------------------------------
 
-## Train Prices
- 2.1100 |
- 2.0236 |    ****                  ****                  ****                  ****
- 1.9371 |   *    *                *    *                *    *                *    *
- 1.8507 |  *      *              *      *              *      *              *      *
- 1.7643 |
- 1.6779 | *        *            *        *            *        *            *        *
- 1.5914 |
- 1.5050 |*          *          *          *          *          *          *          *
- 1.4186 |            *        *            *        *            *        *            *
- 1.3321 |
- 1.2457 |             *      *              *      *              *      *              *
- 1.1593 |              *    *                *    *                *    *
- 1.0729 |               ****                  ****                  ****
- 0.9864 |
- 0.9000 |--------------------------------------------------------------------------------
+## Test Predictions
+ 1.0916607 |
+ 0.9902501 |                   ****                   ****                  *****
+ 0.8888394 |**                *    *                **    *                *     *
+ 0.7874287 |                 *      *                      *              *
+ 0.6860180 |  *             *        *             *                              *
+ 0.5846074 |   *           *          *           *         *            *         *
+ 0.4831967 |    *                                *           *          *           *
+ 0.3817860 |              *            *                      *        *
+ 0.2803754 |     **      *              *      **              *      *              *
+ 0.1789647 |       ** ***                *** **                 **  **
+ 0.0775540 |         *                      *                     **
+-0.0238566 |--------------------------------------------------------------------------
 
-## Train Price Changes
- 0.0135 |
- 0.0116 |                    ***                   ***                   ***
- 0.0097 | *                 *   *                 *   *                 *   *
- 0.0078 |  *                     *               *     *               *     *
- 0.0059 |   *              *      *                     *                     *
- 0.0040 |    *                     *                     *            *        *
- 0.0020 |     *           *         *           *         *                     *
- 0.0001 |*     *                     *                     *                     *
--0.0018 |       *        *            *        *            *        *            *
--0.0037 |        *                     *                     *                     *
--0.0056 |         *     *               *     *               *     *               *
--0.0076 |          *   *                 *   *                 *   *                 *
--0.0095 |           ***                   ***                   ***                   ***
--0.0114 |
--0.0133 |--------------------------------------------------------------------------------
+## Train Loss
+ 0.3133923 |
+ 0.2825171 |
+ 0.2516420 |
+ 0.2207669 |
+ 0.1898918 |*
+ 0.1590166 |
+ 0.1281415 |  *
+ 0.0972664 | *
+ 0.0663913 |      *  *** ***
+ 0.0355161 |   *** **   *   **************************  ******************************
+ 0.0046410 |                                          **
+-0.0262341 |--------------------------------------------------------------------------
 
+## Test Loss
+ 0.1901521 |
+ 0.1715822 |
+ 0.1530123 |*
+ 0.1344424 |  *
+ 0.1158725 |
+ 0.0973026 | *
+ 0.0787328 |   *
+ 0.0601629 |    ** **       *   *
+ 0.0415930 |      *  ** *    *** ******* *   ** *** ****    * * *       *
+ 0.0230231 |           * ***            * ***  *   *    **** * *  ****** *************
+ 0.0044532 |                                                     *
+-0.0141167 |--------------------------------------------------------------------------
 
-Epoch [10/500], Train Loss: 5.74979e-05, Test Loss: 0.000261396
-Epoch [20/500], Train Loss: 5.67665e-05, Test Loss: 0.000260381
-Epoch [30/500], Train Loss: 5.61586e-05, Test Loss: 0.000258909
-Epoch [40/500], Train Loss: 5.55857e-05, Test Loss: 0.00025696
-Epoch [50/500], Train Loss: 5.49822e-05, Test Loss: 0.000254501
+Epoch [2120/10000], Train Loss: 0.0184644, Test Loss: 0.013449
 ```
 
