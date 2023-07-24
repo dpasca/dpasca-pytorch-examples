@@ -135,6 +135,16 @@ public:
     {
         register_module("lstm", mLSTM);
         register_module("linear", mLinear);
+
+        // Xavier initialization for LSTM parameters
+        for (auto& p : mLSTM->named_parameters())
+            if (p.key().find("weight") != std::string::npos)
+                torch::nn::init::xavier_uniform_(p.value());
+
+        // Xavier initialization for Linear parameters
+        for (auto& p : mLinear->named_parameters())
+            if (p.key().find("weight") != std::string::npos)
+                torch::nn::init::xavier_uniform_(p.value());
     }
 
     //       x: {seq_len, seqs_batch, input_size}
