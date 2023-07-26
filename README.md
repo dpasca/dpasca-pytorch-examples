@@ -15,8 +15,6 @@ The CMake build is currently looking for `../libtorch` or `../pytorch-install` (
 ## Build and Run (C++)
 
 ```bash
-cd cpp
-
 ./build.sh
 
 ./_build/example*
