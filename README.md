@@ -19,7 +19,7 @@ cd cpp
 
 ./build.sh
 
-./build/example*
+./_build/example*
 ```
 
 ## "screenshots"
