@@ -17,7 +17,7 @@
 // sample size in minutes
 constexpr size_t SAMPLE_SIZE_MINS = 60*6; // 6 hours
 
-constexpr bool USE_LOG_RETURNS = false;
+constexpr bool USE_LOG_RETURNS = true;
 
 // sine wave parameters for our fictitious market history
 constexpr double TRAINDATA_MIN_VAL = 1.0;
@@ -49,17 +49,18 @@ constexpr double LEARNING_RATE_ADAM = 0.001;
 constexpr double LEARNING_RATE_ADAGRAD = 0.01;
 constexpr double LEARNING_RATE_RMS_PROP = 0.0001;
 constexpr double LEARNING_RATE_SGD = 0.01;
+constexpr double LEARNING_RATE_ADAMW = 0.0025;
 constexpr size_t EPOCHS_N = 10000;
 
 constexpr size_t CHART_W = 74;
 constexpr size_t CHART_H = 12;
 
-#if 1
+#if 0
 auto normalize(auto val) { return val; }
 auto denormalize(auto val) { return val; }
 #else
-auto normalize(auto val) { return (val + 2) / 4; }
-auto denormalize(auto val) { return val * 4 - 2; }
+auto normalize(auto val) { return val * 8; }
+auto denormalize(auto val) { return val / 8; }
 #endif
 
 //==================================================================
@@ -283,11 +284,11 @@ int main()
     Network net(LSTM_INPUT_SIZE, LSTM_HIDDEN_SIZE, LSTM_LAYERS_N);
 
     // Specify loss function and optimizer
-    torch::optim::Adam    optimizer(net.parameters(), torch::optim::AdamOptions(LEARNING_RATE_ADAM));
+    //torch::optim::Adam    optimizer(net.parameters(), torch::optim::AdamOptions(LEARNING_RATE_ADAM));
     //torch::optim::Adagrad optimizer(net.parameters(), torch::optim::AdagradOptions(LEARNING_RATE_ADAGRAD));
     //torch::optim::SGD     optimizer(net.parameters(), torch::optim::SGDOptions(LEARNING_RATE_SGD));
     //torch::optim::RMSprop optimizer(net.parameters(), torch::optim::RMSpropOptions(LEARNING_RATE_RMS_PROP));
-
+    torch::optim::AdamW    optimizer(net.parameters(), torch::optim::AdamWOptions(LEARNING_RATE_ADAMW));
 
     torch::nn::MSELoss lossFunc(torch::nn::MSELossOptions().reduction(torch::kMean));
     //torch::nn::L1Loss lossFunc(torch::nn::L1LossOptions().reduction(torch::kMean));
