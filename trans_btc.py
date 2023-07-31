@@ -14,7 +14,7 @@
 # %% [markdown] id="10c467dd"
 # This is a simple Transformer test with the goal to train to predict a sine wave using PyTorch.
 
-# %% executionInfo={"elapsed": 29774, "status": "ok", "timestamp": 1690802979670, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="284e185b" colab={"base_uri": "https://localhost:8080/"} outputId="1653e4e0-563e-4b46-ebd4-3580c8e5a99a"
+# %% executionInfo={"elapsed": 28484, "status": "ok", "timestamp": 1690810628000, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="284e185b" colab={"base_uri": "https://localhost:8080/"} outputId="cb99fb97-bb89-462c-d3ce-abce4e3bcdaf"
 # Created by Davide Pasca - 2023/07/30
 
 # Ensure that the notebook can see the data dir (Google Colab only)
@@ -47,7 +47,7 @@ import matplotlib.pyplot as plt
 from IPython.display import clear_output
 from typing import Tuple
 
-# %% colab={"base_uri": "https://localhost:8080/"} executionInfo={"elapsed": 17, "status": "ok", "timestamp": 1690802979670, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="846d3462" outputId="e0bc2eaa-c8d7-443c-fba1-19b09407b80a"
+# %% colab={"base_uri": "https://localhost:8080/"} executionInfo={"elapsed": 12, "status": "ok", "timestamp": 1690810628329, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="846d3462" outputId="ec559f46-52d0-4a0c-db2f-448ed097cc30"
 import subprocess
 import torch
 
@@ -62,21 +62,21 @@ elif torch.backends.mps.is_available():
 
 print("Using device:", device)
 
-# %% colab={"base_uri": "https://localhost:8080/"} executionInfo={"elapsed": 16, "status": "ok", "timestamp": 1690802979670, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="fd627f21" outputId="70101b19-df2b-46f5-8cf9-eec40d7c441e"
+# %% colab={"base_uri": "https://localhost:8080/"} executionInfo={"elapsed": 8, "status": "ok", "timestamp": 1690810628330, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="fd627f21" outputId="9b986a14-c8d1-441d-9ece-dd3837c4c09c"
 # Constants
 
 SAMPLE_SIZE_HOURS = int(6)
 SAMPLE_SIZE_MINS = 60 * SAMPLE_SIZE_HOURS  # 6 hours
 
-USE_LOG_RETURNS = False
+USE_LOG_RETURNS = True
 
 EPOCHS_N = 1000
-BATCH_SIZE = 32
+BATCH_SIZE = 128
 
 # Gradient accumulation steps
 ACCUMULATION_STEPS = 10
 
-if True: # quick test
+if False: # quick test
     SEQUENCE_LENGTH_MINS = 30*24*60 # days * 24 * 60
     SEQUENCE_LENGTH = SEQUENCE_LENGTH_MINS // SAMPLE_SIZE_MINS
     TRAIN_DATES = ['2020-01-01', '2022-12-31']
@@ -94,7 +94,7 @@ print(f'SEQUENCE_LENGTH: {SEQUENCE_LENGTH}')
 print(f'TRAIN_DATES: {TRAIN_DATES}')
 print(f'TEST_DATES: {TEST_DATES}')
 
-# %% executionInfo={"elapsed": 578, "status": "ok", "timestamp": 1690802980234, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="4e0ed86f"
+# %% executionInfo={"elapsed": 5, "status": "ok", "timestamp": 1690810628330, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="4e0ed86f"
 import requests
 import json
 import time
@@ -150,7 +150,7 @@ def get_klines(symbol, interval, start_date, end_date):
     return btc_data
 
 
-# %% colab={"base_uri": "https://localhost:8080/", "height": 430} executionInfo={"elapsed": 1760, "status": "ok", "timestamp": 1690802981991, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="0ed510cc" outputId="2dfd99e6-171d-465a-c5e2-1e8321ee3caf"
+# %% colab={"base_uri": "https://localhost:8080/", "height": 430} executionInfo={"elapsed": 1594, "status": "ok", "timestamp": 1690810629920, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="0ed510cc" outputId="9bf1c3ca-0a4c-41be-ddf2-720153c3fdd8"
 import os
 import pickle
 
@@ -192,7 +192,7 @@ plt.plot(range(len(train_y), len(train_y) + len(test_y)), test_y, label='Test Da
 plt.show()
 
 
-# %% executionInfo={"elapsed": 4513, "status": "ok", "timestamp": 1690802986499, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="8506acf9"
+# %% executionInfo={"elapsed": 5164, "status": "ok", "timestamp": 1690810635079, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="8506acf9"
 def create_sequences(input_data, seq_length):
     sequences = []
 
@@ -247,7 +247,7 @@ train_dataloader = DataLoader(train_sequence_data, batch_size=BATCH_SIZE, shuffl
 test_dataloader = DataLoader(test_sequence_data, batch_size=BATCH_SIZE, shuffle=False)
 
 
-# %% executionInfo={"elapsed": 17, "status": "ok", "timestamp": 1690802986499, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="e7639e7a"
+# %% executionInfo={"elapsed": 20, "status": "ok", "timestamp": 1690810635079, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="e7639e7a"
 class TransformerModel(nn.Module):
     def __init__(self, input_dim=1, output_dim=1, seq_len=50, num_layers=2, hidden_dim=128):
         super(TransformerModel, self).__init__()
@@ -288,8 +288,11 @@ model = TransformerModel()
 model = model.to(device)
 
 
-# %% executionInfo={"elapsed": 16, "status": "ok", "timestamp": 1690802986499, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="9988ba9d"
-def print_report(epoch, epochs_n, epochs_per_sec, train_losses, target_losses, test_dataloader, test_predictions):
+# %% executionInfo={"elapsed": 18, "status": "ok", "timestamp": 1690810635079, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="9988ba9d"
+def print_report(
+    epoch, epochs_n, epochs_per_sec,
+    lr,
+    train_losses, target_losses, test_dataloader, test_predictions):
     # Plot losses and predictions
     fig, axs = plt.subplots(1, 2, figsize=(18, 6))  # 1 row, 2 columns
 
@@ -317,18 +320,26 @@ def print_report(epoch, epochs_n, epochs_per_sec, train_losses, target_losses, t
     clear_output(wait=True)
     # make str of epochs per second or epoch per minute
     perf_str = (f'{epochs_per_sec:.3f}/sec' if epochs_per_sec > 1.0 else f'{60.0*epochs_per_sec:.3f}/min')
-    print(f'Epoch {epoch+1}/{epochs_n} ({perf_str}), Train loss: {train_losses[-1]:.5f}, Target loss: {target_losses[-1]:.5f}')
+    print(f'Epoch {epoch+1}/{epochs_n} ({perf_str}),', end=' ')
+    print(f'LR: {lr:.6f},', end=' ')
+    print(f'Train loss: {train_losses[-1]:.5f},', end=' ')
+    print(f'Target loss: {target_losses[-1]:.5f}')
     plt.show()
 
 
-# %% colab={"background_save": true, "base_uri": "https://localhost:8080/", "height": 406} id="877d743d" outputId="5a38e6b2-117c-4ab5-9ba2-ebc683781e4c"
+# %% colab={"base_uri": "https://localhost:8080/", "height": 419} id="877d743d" outputId="abefa1ce-1e30-4c54-be6c-8e49d0644511" executionInfo={"status": "ok", "timestamp": 1690811553003, "user_tz": -540, "elapsed": 917941, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}}
 # torch seed to 0
 torch.manual_seed(0)
 
 # Define loss function and optimizer
 criterion = nn.MSELoss()
 #optimizer = optim.Adam(model.parameters(), lr=0.001)
-optimizer = optim.AdamW(model.parameters(), lr=0.0001)
+optimizer = optim.AdamW(model.parameters(), lr=0.001)
+
+# Initialize the scheduler
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    optimizer, 'min',
+    patience=100, factor=0.75, min_lr=1e-5)
 
 # For storing losses
 train_losses = []
@@ -363,6 +374,9 @@ for epoch in range(EPOCHS_N):
     # Average training loss for this epoch
     train_loss /= len(train_sequence_data)
     train_losses.append(train_loss)
+
+    # update the scheduler
+    scheduler.step(train_loss)
 
     # rest of the loop...
     is_edge_epoch = (epoch == 0 or epoch == EPOCHS_N - 1)
@@ -402,6 +416,7 @@ for epoch in range(EPOCHS_N):
 
         print_report(
           epoch, EPOCHS_N, epochs_per_sec,
+          optimizer.param_groups[0]['lr'],
           train_losses, target_losses, test_dataloader, test_predictions)
 
 plt.ioff()
