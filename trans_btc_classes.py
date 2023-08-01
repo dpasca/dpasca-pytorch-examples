@@ -15,7 +15,7 @@
 # This is a simple Transformer test with the goal to train to predict a sine wave using PyTorch.
 
 # %% executionInfo={"elapsed": 438, "status": "ok", "timestamp": 1690808007603, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="284e185b"
-# Created by Davide Pasca - 2023/07/30
+# Created by Davide Pasca - 2023/07/31
 
 # Ensure that the notebook can see the data dir (Google Colab only)
 import os
