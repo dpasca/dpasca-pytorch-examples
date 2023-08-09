@@ -12,9 +12,9 @@
 # ---
 
 # %% [markdown] id="10c467dd"
-# This is a simple Transformer test with the goal to train to predict a sine wave using PyTorch.
+# ### Simple Transformer test to train to predict Bitcoin price direction
 
-# %% executionInfo={"elapsed": 438, "status": "ok", "timestamp": 1690808007603, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="284e185b"
+# %% executionInfo={"elapsed": 27242, "status": "ok", "timestamp": 1690833439512, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="284e185b" colab={"base_uri": "https://localhost:8080/"} outputId="8995f719-1bfb-4c7c-ec2d-39ae24380643"
 # Created by Davide Pasca - 2023/07/31
 
 # Ensure that the notebook can see the data dir (Google Colab only)
@@ -47,7 +47,7 @@ import matplotlib.pyplot as plt
 from IPython.display import clear_output
 from typing import Tuple
 
-# %% colab={"base_uri": "https://localhost:8080/"} executionInfo={"elapsed": 7, "status": "ok", "timestamp": 1690808008112, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="846d3462" outputId="d3f506ea-ed90-4bbd-c1eb-10f6aa0090bc"
+# %% colab={"base_uri": "https://localhost:8080/"} executionInfo={"elapsed": 22, "status": "ok", "timestamp": 1690833439512, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="846d3462" outputId="7bf8ea40-536e-493b-ca3b-6679156a8ed8"
 import subprocess
 import torch
 
@@ -62,11 +62,13 @@ elif torch.backends.mps.is_available():
 
 print("Using device:", device)
 
-# %% colab={"base_uri": "https://localhost:8080/"} executionInfo={"elapsed": 5, "status": "ok", "timestamp": 1690808008112, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="fd627f21" outputId="7989bae6-7a8c-4244-addb-5febc7ce759c"
+# %% colab={"base_uri": "https://localhost:8080/"} executionInfo={"elapsed": 19, "status": "ok", "timestamp": 1690833439512, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="fd627f21" outputId="625f7bce-649e-4c1d-c9d2-5035d845a03f"
 # Constants
 
 SAMPLE_SIZE_HOURS = int(6)
 SAMPLE_SIZE_MINS = 60 * SAMPLE_SIZE_HOURS  # 6 hours
+
+USE_LOG_RETURNS = True
 
 EPOCHS_N = 1000
 BATCH_SIZE = 128
@@ -75,8 +77,14 @@ BATCH_SIZE = 128
 ACCUMULATION_STEPS = 10
 
 # Define the thresholds for buying and selling
-BUY_THRESHOLD  = 1+0.01
+BUY_THRESHOLD  = 1+0.035
 SELL_THRESHOLD = 1-0.01
+
+USE_HOLD_CLASS = True
+
+CLASSES_N = 3 if USE_HOLD_CLASS else 2
+
+USE_WEIGHTED_LOSS = True
 
 LOOK_FORWARD_SAMP_N = 48*60 // SAMPLE_SIZE_MINS # 24 hours
 
@@ -99,7 +107,7 @@ print(f'SEQUENCE_LENGTH: {SEQUENCE_LENGTH}')
 print(f'TRAIN_DATES: {TRAIN_DATES}')
 print(f'TEST_DATES: {TEST_DATES}')
 
-# %% executionInfo={"elapsed": 3, "status": "ok", "timestamp": 1690808008112, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="4e0ed86f"
+# %% executionInfo={"elapsed": 4, "status": "ok", "timestamp": 1690833439512, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="4e0ed86f"
 import requests
 import json
 import time
@@ -155,7 +163,7 @@ def get_klines(symbol, interval, start_date, end_date):
     return btc_data
 
 
-# %% colab={"base_uri": "https://localhost:8080/", "height": 430} executionInfo={"elapsed": 513, "status": "ok", "timestamp": 1690808008622, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="0ed510cc" outputId="fad0fccf-26a0-4159-885f-eabb157ce214"
+# %% colab={"base_uri": "https://localhost:8080/", "height": 430} executionInfo={"elapsed": 2403, "status": "ok", "timestamp": 1690833441912, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="0ed510cc" outputId="42ae1ac1-0084-4f74-c5a7-7ecfda8e4009"
 import os
 import pickle
 
@@ -197,15 +205,28 @@ plt.plot(range(len(train_y), len(train_y) + len(test_y)), test_y, label='Test Da
 plt.show()
 
 
-# %% executionInfo={"elapsed": 3, "status": "ok", "timestamp": 1690808008622, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="8506acf9"
-def create_sequences(input_data, seq_length):
+# %% executionInfo={"elapsed": 4645, "status": "ok", "timestamp": 1690833446551, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="8506acf9"
+def create_sequences(input_data, seq_length, for_labels=False):
+    sequences = []
+
+    if for_labels:
+        use_input_data = input_data
+    else:
+        if USE_LOG_RETURNS:
+            # Compute the log returns. We'll shift the input data by 1 element to compute the difference in logs.
+            use_input_data = torch.log(input_data[1:]) - torch.log(input_data[:-1])
+            # Normalize log returns
+            use_input_data = (use_input_data - torch.mean(use_input_data)) / torch.std(use_input_data)
+        else:
+            use_input_data = (input_data - torch.mean(input_data)) / torch.std(input_data)
+
     # The 'unfold' function is used to create sliding windows over the data.
     #   1st argument is the dimension along which to unfold (0: time dimension)
     #   2nd argument is the size of each slice (seq_length + 1)
     #     We add 1 because each sequence consists of 'seq_length' elements plus 1 label.
     #   3rd argument is the step between each slice (1)
     #     This means that each sequence will start 1 time step after the prev sequence
-    seq = input_data.unfold(0, seq_length + 1, 1)
+    seq = use_input_data.unfold(0, seq_length + 1, 1)
 
     # 'seq' is now a 2D tensor where each row is a sequence.
     # We can convert it back to a list of sequences using a list comprehension
@@ -215,10 +236,7 @@ def create_sequences(input_data, seq_length):
 
     return sequences
 
-# Create the sequences
-train_sequences = create_sequences(train_y, SEQUENCE_LENGTH)
-test_sequences = create_sequences(test_y, SEQUENCE_LENGTH)
-
+# input sequences here are the raw prices, no log returns, no normalization
 def label_sequences(sequences, look_forward=5):
     labeled_sequences = []
 
@@ -228,31 +246,52 @@ def label_sequences(sequences, look_forward=5):
 
         # Calculate the percentage return
         #percent_return = (next_price - current_price) / current_price
-        percent_return = next_price / current_price
+        nav = next_price / current_price
 
         # Assign a label based on the percentage return
-        if percent_return > BUY_THRESHOLD:
-            label = 'Buy'
-        elif percent_return < SELL_THRESHOLD:
-            label = 'Sell'
+        if USE_HOLD_CLASS:
+            if nav > BUY_THRESHOLD:
+                label = 'Buy'
+            elif nav < SELL_THRESHOLD:
+                label = 'Sell'
+            else:
+                label = 'Hold'
         else:
-            label = 'Hold'
+            if nav > BUY_THRESHOLD:
+                label = 'Buy'
+            else:
+                label = 'Sell'
 
         labeled_sequences.append((current_sequence, label))
 
-    # The last few sequences don't have enough following sequences, so we'll just label them 'Hold'
+    noop_class = 'Hold' if USE_HOLD_CLASS else 'Sell'
+    # The last few sequences don't have enough following sequences, so we'll just set to default
     for i in range(len(sequences) - look_forward, len(sequences)):
         sequence, _ = sequences[i]
-        labeled_sequences.append((sequence, 'Hold'))
+        labeled_sequences.append((sequence, noop_class))
 
     return labeled_sequences
 
-# Label the sequences
-train_sequences = label_sequences(train_sequences, LOOK_FORWARD_SAMP_N)
-test_sequences = label_sequences(test_sequences, LOOK_FORWARD_SAMP_N)
+def create_and_label_sequences(data, seq_length, look_forward):
+    # Create sequences for labeling and model input
+    labeling_sequences = create_sequences(data, seq_length, for_labels=True)
+    input_sequences = create_sequences(data, seq_length, for_labels=False)
+    # Label the sequences
+    labeled_sequences = label_sequences(labeling_sequences, look_forward)
+    # Combine input_sequences and labels
+    sequences = [(input_seq, label) for ((input_seq, _), (_, label)) in zip(input_sequences, labeled_sequences)]
+
+    return sequences
+
+# do build the sequences, with labels, for training and testing
+train_sequences = create_and_label_sequences(train_y, SEQUENCE_LENGTH, LOOK_FORWARD_SAMP_N)
+test_sequences = create_and_label_sequences(test_y, SEQUENCE_LENGTH, LOOK_FORWARD_SAMP_N)
 
 # Define a mapping from labels to integers
-label_to_int = {'Buy': 0, 'Sell': 1, 'Hold': 2}
+if USE_HOLD_CLASS:
+    label_to_int = {'Buy': 0, 'Sell': 1, 'Hold': 2}
+else:
+    label_to_int = {'Buy': 0, 'Sell': 1}
 
 # Convert sequences directly to PyTorch tensors
 train_sequence_data = [(seq.unsqueeze(1).float().to(device), torch.tensor(label_to_int[label]).to(device)) for seq, label in train_sequences]
@@ -261,11 +300,11 @@ test_sequence_data  = [(seq.unsqueeze(1).float().to(device), torch.tensor(label_
 from torch.utils.data import DataLoader
 
 # Create data loaders
-train_dataloader = DataLoader(train_sequence_data, batch_size=BATCH_SIZE, shuffle=False)
+train_dataloader = DataLoader(train_sequence_data, batch_size=BATCH_SIZE, shuffle=True)
 test_dataloader = DataLoader(test_sequence_data, batch_size=BATCH_SIZE, shuffle=False)
 
 
-# %% executionInfo={"elapsed": 3, "status": "ok", "timestamp": 1690808008622, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="e7639e7a"
+# %% executionInfo={"elapsed": 12, "status": "ok", "timestamp": 1690833446552, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="e7639e7a"
 class TransformerModel(nn.Module):
     def __init__(self, input_dim=1, output_dim=3, seq_len=50, num_layers=2, hidden_dim=128):
         super(TransformerModel, self).__init__()
@@ -276,7 +315,7 @@ class TransformerModel(nn.Module):
         self.embedding = nn.Linear(input_dim, hidden_dim)
         self.transformer = nn.Transformer(
             d_model=hidden_dim,
-            nhead=1,
+            nhead=8, # number of features to attend to
             num_encoder_layers=num_layers,
             num_decoder_layers=num_layers,
             dim_feedforward=hidden_dim
@@ -295,11 +334,13 @@ class TransformerModel(nn.Module):
         x = self.fc(x)  # Apply last layer, hidden_dim -> output_dim
         return x
 
-model = TransformerModel()
+model = TransformerModel(
+    seq_len=SEQUENCE_LENGTH,
+    output_dim=CLASSES_N)
 model = model.to(device)
 
 
-# %% executionInfo={"elapsed": 3, "status": "ok", "timestamp": 1690808008623, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="9988ba9d"
+# %% executionInfo={"elapsed": 10, "status": "ok", "timestamp": 1690833446552, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="9988ba9d"
 def print_report(
     epoch, epochs_n, epochs_per_sec, lr,
     train_losses, target_losses, test_dataloader, test_predictions):
@@ -338,10 +379,13 @@ def print_report(
     plt.show()
 
 
-# %%
+# %% colab={"base_uri": "https://localhost:8080/"} executionInfo={"elapsed": 9, "status": "ok", "timestamp": 1690833446552, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="6961343b" outputId="8b50c396-3da9-48e5-9146-5d17dc4f6e80"
 def calculate_weights(sequences):
     # Initialize counts
-    counts = {'Buy': 0, 'Sell': 0, 'Hold': 0}
+    if USE_HOLD_CLASS:
+        counts = {'Buy': 0, 'Sell': 0, 'Hold': 0}
+    else:
+        counts = {'Buy': 0, 'Sell': 0}
 
     # Count occurrences of each class
     for _, label in sequences:
@@ -356,12 +400,19 @@ def calculate_weights(sequences):
     return weights
 
 # Calculate weights for training data
-weights = calculate_weights(train_sequences)
-print(f'Weights for classes: {weights}')
-# Convert weights to tensor and move to device
-weights_tensor = torch.tensor([weights['Buy'], weights['Sell'], weights['Hold']]).float().to(device)
+if USE_WEIGHTED_LOSS:
+    weights = calculate_weights(train_sequences)
+    print(f'Weights for classes: {weights}')
+else:
+    weights = {'Buy': 1, 'Sell': 1, 'Hold': 1}
 
-# %% colab={"base_uri": "https://localhost:8080/", "height": 419} executionInfo={"elapsed": 530744, "status": "ok", "timestamp": 1690808539364, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="877d743d" outputId="ae724e79-a01e-438c-d4ce-f1e2a25c84a2"
+# Convert weights to tensor and move to device
+if USE_HOLD_CLASS:
+    weights_tensor = torch.tensor([weights['Buy'], weights['Sell'], weights['Hold']]).float().to(device)
+else:
+    weights_tensor = torch.tensor([weights['Buy'], weights['Sell']]).float().to(device)
+
+# %% colab={"base_uri": "https://localhost:8080/", "height": 668} id="877d743d" outputId="c2c56323-6137-4214-d149-c3f30746e872" executionInfo={"status": "ok", "timestamp": 1690834232284, "user_tz": -540, "elapsed": 785738, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}}
 # torch seed to 0
 torch.manual_seed(0)
 
@@ -374,7 +425,7 @@ optimizer = optim.AdamW(model.parameters(), lr=0.0005)
 # Initialize the scheduler
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     optimizer, 'min',
-    patience=10, factor=0.8, min_lr=1e-5)
+    patience=10, factor=0.8, min_lr=5e-6)
 
 # For storing losses
 train_losses = []

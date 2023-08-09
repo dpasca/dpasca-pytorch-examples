@@ -14,7 +14,7 @@
 # %% [markdown] id="10c467dd"
 # This is a simple Transformer test with the goal to train to predict a sine wave using PyTorch.
 
-# %% executionInfo={"elapsed": 28484, "status": "ok", "timestamp": 1690810628000, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="284e185b" colab={"base_uri": "https://localhost:8080/"} outputId="cb99fb97-bb89-462c-d3ce-abce4e3bcdaf"
+# %% colab={"base_uri": "https://localhost:8080/"} executionInfo={"elapsed": 29705, "status": "ok", "timestamp": 1690834493244, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="284e185b" outputId="d14ab280-a080-4582-8825-72e2afa29ce7"
 # Created by Davide Pasca - 2023/07/30
 
 # Ensure that the notebook can see the data dir (Google Colab only)
@@ -47,7 +47,7 @@ import matplotlib.pyplot as plt
 from IPython.display import clear_output
 from typing import Tuple
 
-# %% colab={"base_uri": "https://localhost:8080/"} executionInfo={"elapsed": 12, "status": "ok", "timestamp": 1690810628329, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="846d3462" outputId="ec559f46-52d0-4a0c-db2f-448ed097cc30"
+# %% colab={"base_uri": "https://localhost:8080/"} executionInfo={"elapsed": 11, "status": "ok", "timestamp": 1690834493244, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="846d3462" outputId="7c425b15-50f2-47ef-e538-be547afc0d9a"
 import subprocess
 import torch
 
@@ -62,7 +62,7 @@ elif torch.backends.mps.is_available():
 
 print("Using device:", device)
 
-# %% colab={"base_uri": "https://localhost:8080/"} executionInfo={"elapsed": 8, "status": "ok", "timestamp": 1690810628330, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="fd627f21" outputId="9b986a14-c8d1-441d-9ece-dd3837c4c09c"
+# %% colab={"base_uri": "https://localhost:8080/"} executionInfo={"elapsed": 7, "status": "ok", "timestamp": 1690834493245, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="fd627f21" outputId="b44f7e55-e312-4a6f-d60f-109999dae831"
 # Constants
 
 SAMPLE_SIZE_HOURS = int(6)
@@ -94,7 +94,7 @@ print(f'SEQUENCE_LENGTH: {SEQUENCE_LENGTH}')
 print(f'TRAIN_DATES: {TRAIN_DATES}')
 print(f'TEST_DATES: {TEST_DATES}')
 
-# %% executionInfo={"elapsed": 5, "status": "ok", "timestamp": 1690810628330, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="4e0ed86f"
+# %% executionInfo={"elapsed": 595, "status": "ok", "timestamp": 1690834493836, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="4e0ed86f"
 import requests
 import json
 import time
@@ -150,7 +150,7 @@ def get_klines(symbol, interval, start_date, end_date):
     return btc_data
 
 
-# %% colab={"base_uri": "https://localhost:8080/", "height": 430} executionInfo={"elapsed": 1594, "status": "ok", "timestamp": 1690810629920, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="0ed510cc" outputId="9bf1c3ca-0a4c-41be-ddf2-720153c3fdd8"
+# %% colab={"base_uri": "https://localhost:8080/", "height": 430} executionInfo={"elapsed": 526, "status": "ok", "timestamp": 1690834494357, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="0ed510cc" outputId="b817ab25-a7e1-4060-c19d-086377e42cf0"
 import os
 import pickle
 
@@ -192,7 +192,7 @@ plt.plot(range(len(train_y), len(train_y) + len(test_y)), test_y, label='Test Da
 plt.show()
 
 
-# %% executionInfo={"elapsed": 5164, "status": "ok", "timestamp": 1690810635079, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="8506acf9"
+# %% executionInfo={"elapsed": 5405, "status": "ok", "timestamp": 1690834499756, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="8506acf9"
 def create_sequences(input_data, seq_length):
     sequences = []
 
@@ -224,18 +224,6 @@ def create_sequences(input_data, seq_length):
 train_sequences = create_sequences(train_y, SEQUENCE_LENGTH)
 test_sequences = create_sequences(test_y, SEQUENCE_LENGTH)
 
-# Convert sequences to numpy arrays first, then to PyTorch tensors
-"""
-train_sequence_data = [
-    (torch.from_numpy(np.array(seq)).unsqueeze(1).float().to(device),
-     label.clone().detach().float().to(device))
-    for seq, label in train_sequences]
-
-test_sequence_data = [
-    (torch.from_numpy(np.array(seq)).unsqueeze(1).float().to(device),
-     label.clone().detach().float().to(device))
-    for seq, label in test_sequences]
-"""
 # Convert sequences directly to PyTorch tensors
 train_sequence_data = [(seq.unsqueeze(1).float().to(device), label.float().to(device)) for seq, label in train_sequences]
 test_sequence_data = [(seq.unsqueeze(1).float().to(device), label.float().to(device)) for seq, label in test_sequences]
@@ -247,7 +235,7 @@ train_dataloader = DataLoader(train_sequence_data, batch_size=BATCH_SIZE, shuffl
 test_dataloader = DataLoader(test_sequence_data, batch_size=BATCH_SIZE, shuffle=False)
 
 
-# %% executionInfo={"elapsed": 20, "status": "ok", "timestamp": 1690810635079, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="e7639e7a"
+# %% executionInfo={"elapsed": 20, "status": "ok", "timestamp": 1690834499757, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="e7639e7a"
 class TransformerModel(nn.Module):
     def __init__(self, input_dim=1, output_dim=1, seq_len=50, num_layers=2, hidden_dim=128):
         super(TransformerModel, self).__init__()
@@ -258,7 +246,7 @@ class TransformerModel(nn.Module):
         self.embedding = nn.Linear(input_dim, hidden_dim)
         self.transformer = nn.Transformer(
             d_model=hidden_dim,
-            nhead=1,
+            nhead=8,
             num_encoder_layers=num_layers,
             num_decoder_layers=num_layers,
             dim_feedforward=hidden_dim
@@ -288,7 +276,7 @@ model = TransformerModel()
 model = model.to(device)
 
 
-# %% executionInfo={"elapsed": 18, "status": "ok", "timestamp": 1690810635079, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="9988ba9d"
+# %% executionInfo={"elapsed": 18, "status": "ok", "timestamp": 1690834499757, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="9988ba9d"
 def print_report(
     epoch, epochs_n, epochs_per_sec,
     lr,
@@ -327,7 +315,7 @@ def print_report(
     plt.show()
 
 
-# %% colab={"base_uri": "https://localhost:8080/", "height": 419} id="877d743d" outputId="abefa1ce-1e30-4c54-be6c-8e49d0644511" executionInfo={"status": "ok", "timestamp": 1690811553003, "user_tz": -540, "elapsed": 917941, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}}
+# %% colab={"base_uri": "https://localhost:8080/", "height": 791} executionInfo={"elapsed": 330147, "status": "error", "timestamp": 1690834829887, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="877d743d" outputId="8219da63-e8ac-4679-f2fd-9194867e4719"
 # torch seed to 0
 torch.manual_seed(0)
 
