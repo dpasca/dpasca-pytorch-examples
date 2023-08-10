@@ -14,7 +14,7 @@
 # %% [markdown] id="10c467dd"
 # ### Simple Transformer test to train to predict Bitcoin price direction
 
-# %% executionInfo={"elapsed": 27242, "status": "ok", "timestamp": 1690833439512, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="284e185b" colab={"base_uri": "https://localhost:8080/"} outputId="8995f719-1bfb-4c7c-ec2d-39ae24380643"
+# %% colab={"base_uri": "https://localhost:8080/"} executionInfo={"elapsed": 27242, "status": "ok", "timestamp": 1690833439512, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="284e185b" outputId="8995f719-1bfb-4c7c-ec2d-39ae24380643"
 # Created by Davide Pasca - 2023/07/31
 
 # Ensure that the notebook can see the data dir (Google Colab only)
@@ -65,7 +65,7 @@ print("Using device:", device)
 # %% colab={"base_uri": "https://localhost:8080/"} executionInfo={"elapsed": 19, "status": "ok", "timestamp": 1690833439512, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="fd627f21" outputId="625f7bce-649e-4c1d-c9d2-5035d845a03f"
 # Constants
 
-SAMPLE_SIZE_HOURS = int(6)
+SAMPLE_SIZE_HOURS = int(1)
 SAMPLE_SIZE_MINS = 60 * SAMPLE_SIZE_HOURS  # 6 hours
 
 USE_LOG_RETURNS = True
@@ -77,8 +77,8 @@ BATCH_SIZE = 128
 ACCUMULATION_STEPS = 10
 
 # Define the thresholds for buying and selling
-BUY_THRESHOLD  = 1+0.035
-SELL_THRESHOLD = 1-0.01
+BUY_THRESHOLD  = 1+0.020
+SELL_THRESHOLD = 1-0.020
 
 USE_HOLD_CLASS = True
 
@@ -86,10 +86,10 @@ CLASSES_N = 3 if USE_HOLD_CLASS else 2
 
 USE_WEIGHTED_LOSS = True
 
-LOOK_FORWARD_SAMP_N = 48*60 // SAMPLE_SIZE_MINS # 24 hours
+LOOK_FORWARD_SAMP_N = 5*60 // SAMPLE_SIZE_MINS # 24 hours
 
 if True: # quick test
-    SEQUENCE_LENGTH_MINS = 30*24*60 # days * 24 * 60
+    SEQUENCE_LENGTH_MINS = 1*24*60 # days * 24 * 60
     SEQUENCE_LENGTH = SEQUENCE_LENGTH_MINS // SAMPLE_SIZE_MINS
     TRAIN_DATES = ['2020-01-01', '2022-12-31']
     TEST_DATES  = ['2023-01-01', '2023-07-23']
@@ -106,6 +106,16 @@ print(f'ACCUMULATION_STEPS: {ACCUMULATION_STEPS}')
 print(f'SEQUENCE_LENGTH: {SEQUENCE_LENGTH}')
 print(f'TRAIN_DATES: {TRAIN_DATES}')
 print(f'TEST_DATES: {TEST_DATES}')
+
+# Define a mapping from labels to integers
+if USE_HOLD_CLASS:
+    LABELS_TO_INT_CLASS = {'Buy': 0, 'Sell':  1, 'Hold': 2}
+    LABELS_TO_INT_DISP  = {'Buy': 1, 'Sell': -1, 'Hold': 0}
+    CLASS_TO_DISP = {0: 1, 1: -1, 2: 0}
+else:
+    LABELS_TO_INT_CLASS = {'Buy': 0, 'Sell':  1}
+    LABELS_TO_INT_DISP  = {'Buy': 1, 'Sell': -1}
+    CLASS_TO_DISP = {0: 1, 1: -1}
 
 # %% executionInfo={"elapsed": 4, "status": "ok", "timestamp": 1690833439512, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="4e0ed86f"
 import requests
@@ -287,21 +297,66 @@ def create_and_label_sequences(data, seq_length, look_forward):
 train_sequences = create_and_label_sequences(train_y, SEQUENCE_LENGTH, LOOK_FORWARD_SAMP_N)
 test_sequences = create_and_label_sequences(test_y, SEQUENCE_LENGTH, LOOK_FORWARD_SAMP_N)
 
-# Define a mapping from labels to integers
-if USE_HOLD_CLASS:
-    label_to_int = {'Buy': 0, 'Sell': 1, 'Hold': 2}
-else:
-    label_to_int = {'Buy': 0, 'Sell': 1}
-
 # Convert sequences directly to PyTorch tensors
-train_sequence_data = [(seq.unsqueeze(1).float().to(device), torch.tensor(label_to_int[label]).to(device)) for seq, label in train_sequences]
-test_sequence_data  = [(seq.unsqueeze(1).float().to(device), torch.tensor(label_to_int[label]).to(device)) for seq, label in test_sequences]
+train_sequence_data = [(seq.unsqueeze(1).float().to(device), torch.tensor(LABELS_TO_INT_CLASS[label]).to(device)) for seq, label in train_sequences]
+test_sequence_data  = [(seq.unsqueeze(1).float().to(device), torch.tensor(LABELS_TO_INT_CLASS[label]).to(device)) for seq, label in test_sequences]
 
+# print the shapes of the training and testing data
+print(f"Train seq data size: {len(train_sequence_data)} * {train_sequence_data[0][0].shape}")
+print(f"Test  seq data size: {len(test_sequence_data)} * {test_sequence_data[0][0].shape}")
+
+# %%
 from torch.utils.data import DataLoader
 
 # Create data loaders
 train_dataloader = DataLoader(train_sequence_data, batch_size=BATCH_SIZE, shuffle=True)
 test_dataloader = DataLoader(test_sequence_data, batch_size=BATCH_SIZE, shuffle=False)
+
+# %%
+# TEST TEST TEST for create_sequences()
+if True:
+    test_input_data = torch.tensor([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0])
+    test_seq = create_sequences(test_input_data, 4, for_labels=True)
+    for seq, label in test_seq:
+        print(f"seq: {seq}, label: {label}")
+
+# %%
+from collections import Counter
+
+# TEST TEST TEST, visual inspection of labels
+def plot_label_sequences(labels):
+    # Convert the labels to integers using your defined mapping
+    labels_int = [LABELS_TO_INT_DISP[label] for label in labels]
+
+    # Compute the cumulative sum
+    labels_cumulative = np.cumsum(labels_int)
+
+    # Create a colormap
+    colors = ['red' if label == -1 else 'black' if label == 0 else 'green' for label in labels_int]
+
+    # Define sizes (smaller for 'Hold')
+    sizes = [0.01 if label == 0 else 1 for label in labels_int]
+
+    plt.figure(figsize=(10, 5))
+
+    # Plot using plt.plot for better performance
+    plt.scatter(range(len(labels_cumulative)), labels_cumulative, c=colors, s=sizes)
+
+    plt.xlabel('Time')
+    plt.ylabel('Cumulative Label Value')
+    plt.title('Training Label Sequences')
+    plt.show()
+
+    # Count the occurrences of each label
+    label_counts = Counter(labels)
+    print("Occurrences of each label:", label_counts)
+
+if True:
+    # Extract the labels from sequences and plot
+    plot_label_sequences([label for _, label in train_sequences])
+
+    # Extract the labels from sequences and plot
+    plot_label_sequences([label for _, label in test_sequences])
 
 
 # %% executionInfo={"elapsed": 12, "status": "ok", "timestamp": 1690833446552, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="e7639e7a"
@@ -350,7 +405,9 @@ def print_report(
     # Plot the actual values and the predictions
     actual_values = []
     for _, labels in test_dataloader:
-        actual_values.extend(labels.detach().cpu().numpy())
+        # convert with CLASS_TO_DISP for plotting
+        labels_plot = [CLASS_TO_DISP[label.detach().cpu().numpy()] for label in labels]
+        actual_values.extend(labels_plot)
 
     axs[0].plot(actual_values, label='Actual', marker='o', linestyle='', markersize=2)
     axs[0].plot(test_predictions, label='Predicted', marker='x', linestyle='', markersize=2)
@@ -412,7 +469,7 @@ if USE_HOLD_CLASS:
 else:
     weights_tensor = torch.tensor([weights['Buy'], weights['Sell']]).float().to(device)
 
-# %% colab={"base_uri": "https://localhost:8080/", "height": 668} id="877d743d" outputId="c2c56323-6137-4214-d149-c3f30746e872" executionInfo={"status": "ok", "timestamp": 1690834232284, "user_tz": -540, "elapsed": 785738, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}}
+# %% colab={"base_uri": "https://localhost:8080/", "height": 668} executionInfo={"elapsed": 785738, "status": "ok", "timestamp": 1690834232284, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="877d743d" outputId="c2c56323-6137-4214-d149-c3f30746e872"
 # torch seed to 0
 torch.manual_seed(0)
 
