@@ -324,7 +324,7 @@ if True:
 from collections import Counter
 
 # TEST TEST TEST, visual inspection of labels
-def plot_label_sequences(labels):
+def plot_label_sequences(name : str, labels : list):
     # Convert the labels to integers using your defined mapping
     labels_int = [LABELS_TO_INT_DISP[label] for label in labels]
 
@@ -344,7 +344,7 @@ def plot_label_sequences(labels):
 
     plt.xlabel('Time')
     plt.ylabel('Cumulative Label Value')
-    plt.title('Training Label Sequences')
+    plt.title(f'{name} Label Sequences')
     plt.show()
 
     # Count the occurrences of each label
@@ -352,11 +352,8 @@ def plot_label_sequences(labels):
     print("Occurrences of each label:", label_counts)
 
 if True:
-    # Extract the labels from sequences and plot
-    plot_label_sequences([label for _, label in train_sequences])
-
-    # Extract the labels from sequences and plot
-    plot_label_sequences([label for _, label in test_sequences])
+    plot_label_sequences('Training', [label for _, label in train_sequences])
+    plot_label_sequences('Testing',  [label for _, label in test_sequences])
 
 
 # %% executionInfo={"elapsed": 12, "status": "ok", "timestamp": 1690833446552, "user": {"displayName": "Davide Pasca", "userId": "15895349759666062266"}, "user_tz": -540} id="e7639e7a"
@@ -399,6 +396,10 @@ model = model.to(device)
 def print_report(
     epoch, epochs_n, epochs_per_sec, lr,
     train_losses, target_losses, test_dataloader, test_predictions):
+
+    # Convert test_predictions to display values and make a copy
+    test_predictions_disp = [CLASS_TO_DISP[pred] for pred in test_predictions[:]]
+
     # Create a figure with 2 subplots arranged vertically
     fig, axs = plt.subplots(2, 1, figsize=(18, 10), gridspec_kw={'height_ratios': [1, 2]})
 
@@ -406,11 +407,11 @@ def print_report(
     actual_values = []
     for _, labels in test_dataloader:
         # convert with CLASS_TO_DISP for plotting
-        labels_plot = [CLASS_TO_DISP[label.detach().cpu().numpy()] for label in labels]
+        labels_plot = [CLASS_TO_DISP[int(label.detach().cpu().numpy())] for label in labels]
         actual_values.extend(labels_plot)
 
     axs[0].plot(actual_values, label='Actual', marker='o', linestyle='', markersize=2)
-    axs[0].plot(test_predictions, label='Predicted', marker='x', linestyle='', markersize=2)
+    axs[0].plot(test_predictions_disp, label='Predicted', marker='x', linestyle='', markersize=2)
     axs[0].set_xlabel('Time Step')
     axs[0].set_ylabel('Class Label')
     axs[0].legend()
